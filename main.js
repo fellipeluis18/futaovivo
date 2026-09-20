@@ -19,6 +19,10 @@ let overlayKind = null;
 let overlayData = null;
 let installedExtensions = [];
 
+function getBrowserSession() {
+  return session.fromPartition('persist:browser');
+}
+
 function getActiveTab() {
   return tabs.find((tab) => tab.id === activeTabId);
 }
@@ -45,7 +49,7 @@ async function restoreInstalledExtensions() {
         installedExtensions.push(item);
         continue;
       }
-      const extension = await session.defaultSession.loadExtension(item.path, { allowFileAccess: true });
+      const extension = await getBrowserSession().loadExtension(item.path, { allowFileAccess: true });
       installedExtensions.push({ ...item, id: extension.id, name: extension.name || item.name, version: extension.version, enabled: true, optionsPage: item.optionsPage || extensionOptionsPage(item.path) });
     }
   } catch {
@@ -227,7 +231,7 @@ async function installCrx(url) {
   fs.rmSync(destination, { recursive: true, force: true });
   fs.mkdirSync(destination, { recursive: true });
   new AdmZip(crx.subarray(zipOffset)).extractAllTo(destination, true);
-  const extension = await session.defaultSession.loadExtension(destination, { allowFileAccess: true });
+  const extension = await getBrowserSession().loadExtension(destination, { allowFileAccess: true });
   const item = { id: extension.id, name: extension.name || extensionId, version: extension.version, path: destination, enabled: true, optionsPage: extensionOptionsPage(destination) };
   installedExtensions = [...installedExtensions.filter((entry) => entry.id !== item.id), item];
   fs.writeFileSync(extensionRegistryPath(), JSON.stringify(installedExtensions, null, 2));
@@ -353,7 +357,7 @@ app.whenReady().then(async () => {
     if (url) return installCrx(url);
     const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'], title: 'Selecionar extensão descompactada' });
     if (result.canceled || !result.filePaths[0]) return installedExtensions;
-    const extension = await session.defaultSession.loadExtension(result.filePaths[0], { allowFileAccess: true });
+    const extension = await getBrowserSession().loadExtension(result.filePaths[0], { allowFileAccess: true });
     const item = { id: extension.id, name: extension.name || path.basename(result.filePaths[0]), version: extension.version, path: result.filePaths[0], enabled: true, optionsPage: extensionOptionsPage(result.filePaths[0]) };
     installedExtensions = [...installedExtensions.filter((entry) => entry.id !== item.id), item];
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
@@ -365,11 +369,11 @@ app.whenReady().then(async () => {
     const item = installedExtensions.find((extension) => extension.id === id);
     if (!item) return installedExtensions;
     if (item.enabled === false) {
-      const extension = await session.defaultSession.loadExtension(item.path, { allowFileAccess: true });
+      const extension = await getBrowserSession().loadExtension(item.path, { allowFileAccess: true });
       item.id = extension.id;
       item.enabled = true;
     } else {
-      session.defaultSession.removeExtension(item.id);
+      getBrowserSession().removeExtension(item.id);
       item.enabled = false;
     }
     fs.writeFileSync(extensionRegistryPath(), JSON.stringify(installedExtensions, null, 2));
@@ -378,7 +382,7 @@ app.whenReady().then(async () => {
   });
   ipcMain.handle('extensions:remove', async (_event, id) => {
     const item = installedExtensions.find((extension) => extension.id === id);
-    if (item?.enabled !== false) session.defaultSession.removeExtension(id);
+    if (item?.enabled !== false) getBrowserSession().removeExtension(id);
     installedExtensions = installedExtensions.filter((extension) => extension.id !== id);
     fs.writeFileSync(extensionRegistryPath(), JSON.stringify(installedExtensions, null, 2));
     sendState();
@@ -400,7 +404,7 @@ app.whenReady().then(async () => {
     return true;
   });
   ipcMain.handle('browser:clear-all-cookies', async () => {
-    await session.defaultSession.clearStorageData({ storages: ['cookies'] });
+    await getBrowserSession().clearStorageData({ storages: ['cookies'] });
     await Promise.all(tabs.map((tab) => tab.view.webContents.session.clearStorageData({ storages: ['cookies'] })));
     return true;
   });

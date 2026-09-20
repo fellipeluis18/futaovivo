@@ -134,14 +134,8 @@ $('#favorite').addEventListener('click', () => {
 });
 $('#menu-button').addEventListener('click', () => {
   overlays.menu = !overlays.menu;
-  $('#menu').hidden = !overlays.menu;
-  updateOverlayWidth();
   window.browserAPI.toggleOverlay('menu');
 });
-$('#settings').addEventListener('click', () => window.browserAPI.openSettings());
-$('#devtools').addEventListener('click', () => window.browserAPI.toggleDevTools());
-$('#clear-current').addEventListener('click', async () => { await window.browserAPI.clearCookies(state.activeTabId); overlays.menu = false; $('#menu').hidden = true; updateOverlayWidth(); });
-$('#clear-all').addEventListener('click', async () => { await window.browserAPI.clearAllCookies(); overlays.menu = false; $('#menu').hidden = true; updateOverlayWidth(); });
 $('#minimize').addEventListener('click', () => window.browserAPI.minimize());
 $('#maximize').addEventListener('click', () => window.browserAPI.maximize());
 $('#close').addEventListener('click', () => window.browserAPI.close());

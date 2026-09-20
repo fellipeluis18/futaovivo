@@ -73,4 +73,5 @@ content.addEventListener('contextmenu', async (event) => {
     menu.remove();
     renderExtensions(await window.browserAPI.listExtensions());
   });
+  menu.addEventListener('mouseleave', () => menu.remove());
 });
