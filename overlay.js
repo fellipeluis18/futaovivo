@@ -7,7 +7,7 @@ function render(kind, data = []) {
   panel.hidden = false;
   const isMenu = kind === 'menu';
   const isFavorites = kind === 'favorites';
-  title.textContent = isMenu ? 'Menu' : 'Painel lateral';
+  const isPanel = kind === 'panel';
   title.textContent = isFavorites ? 'Favoritos' : isMenu ? 'Menu' : 'Painel lateral';
   description.textContent = isFavorites ? 'Páginas salvas' : isMenu ? 'Ações do navegador' : '';
   content.innerHTML = isMenu ? '<button class="menu-item" data-action="settings">Perfil e configurações</button><button class="menu-item" data-action="extensions">Extensões <span>›</span></button><button class="menu-item" data-action="clear-current">Limpar cookies desta aba</button><button class="menu-item" data-action="clear-all">Limpar cookies de todas as abas</button><button class="menu-item" data-action="devtools">Ferramentas de desenvolvedor</button>' : isFavorites ? (data.length ? data.map((favorite) => `<button class="favorite-entry" data-url="${escapeHtml(favorite.url)}">★ ${escapeHtml(favorite.title || favorite.url)}</button>`).join('') : '<p>Nenhum favorito salvo.</p>') : '';

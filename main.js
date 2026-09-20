@@ -1,5 +1,8 @@
 const { app, BrowserWindow, BrowserView, ipcMain, session, dialog } = require('electron');
+const { net } = require('electron');
+const AdmZip = require('adm-zip');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const MAX_TABS = 6;
@@ -162,6 +165,47 @@ function showExtensionMenu() {
   if (overlayView) overlayView.webContents.send('overlay:extensions', installedExtensions);
 }
 
+function extensionIdFromUrl(url) {
+  return url.match(/chromewebstore\.google\.com\/detail\/[^/]+\/([a-p]{32})/i)?.[1] || null;
+}
+
+function downloadFile(url) {
+  return new Promise((resolve, reject) => {
+    const request = net.request(url);
+    const chunks = [];
+    request.on('response', (response) => {
+      if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) return resolve(downloadFile(response.headers.location));
+      if (response.statusCode !== 200) return reject(new Error(`Download failed: ${response.statusCode}`));
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => resolve(Buffer.concat(chunks)));
+      response.on('error', reject);
+    });
+    request.on('error', reject);
+    request.end();
+  });
+}
+
+async function installCrx(url) {
+  const extensionId = extensionIdFromUrl(url);
+  if (!extensionId) throw new Error('Abra a página de detalhes de uma extensão da Chrome Web Store.');
+  const crxUrl = `https://clients2.google.com/service/update2/crx?response=redirect&prodversion=128.0&acceptformat=crx2,crx3&x=id%3D${extensionId}%26uc`;
+  const crx = await downloadFile(crxUrl);
+  if (crx.toString('ascii', 0, 4) !== 'Cr24') throw new Error('A Chrome Web Store não retornou um pacote CRX válido.');
+  const version = crx.readUInt32LE(4);
+  const zipOffset = version === 2 ? 16 + crx.readUInt32LE(8) + crx.readUInt32LE(12) : version === 3 ? 12 + crx.readUInt32LE(8) : 0;
+  if (!zipOffset || zipOffset >= crx.length) throw new Error('Formato CRX não suportado.');
+  const destination = path.join(app.getPath('userData'), 'extensions', extensionId);
+  fs.rmSync(destination, { recursive: true, force: true });
+  fs.mkdirSync(destination, { recursive: true });
+  new AdmZip(crx.subarray(zipOffset)).extractAllTo(destination, true);
+  const extension = await session.defaultSession.loadExtension(destination, { allowFileAccess: true });
+  const item = { id: extension.id, name: extension.name || extensionId, version: extension.version, path: destination };
+  installedExtensions = [...installedExtensions.filter((entry) => entry.id !== item.id), item];
+  fs.writeFileSync(extensionRegistryPath(), JSON.stringify(installedExtensions, null, 2));
+  sendState();
+  return item;
+}
+
 function navigate(value) {
   const active = getActiveTab();
   if (!active) return;
@@ -250,7 +294,8 @@ app.whenReady().then(async () => {
     if (action === 'extensions') return showExtensionMenu();
   });
   ipcMain.handle('extensions:list', () => installedExtensions);
-  ipcMain.handle('extensions:install', async () => {
+  ipcMain.handle('extensions:install', async (_event, url) => {
+    if (url) return installCrx(url);
     const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'], title: 'Selecionar extensão descompactada' });
     if (result.canceled || !result.filePaths[0]) return installedExtensions;
     const extension = await session.defaultSession.loadExtension(result.filePaths[0], { allowFileAccess: true });

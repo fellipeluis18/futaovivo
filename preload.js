@@ -18,7 +18,7 @@ contextBridge.exposeInMainWorld('browserAPI', {
   onOverlayShow: (callback) => ipcRenderer.on('overlay:show', (_event, kind) => callback(kind)),
   onOverlayExtensions: (callback) => ipcRenderer.on('overlay:extensions', (_event, extensions) => callback(extensions)),
   listExtensions: () => ipcRenderer.invoke('extensions:list'),
-  installExtension: () => ipcRenderer.invoke('extensions:install'),
+  installExtension: (url) => ipcRenderer.invoke('extensions:install', url),
   toggleDevTools: () => ipcRenderer.send('browser:toggle-devtools'),
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),

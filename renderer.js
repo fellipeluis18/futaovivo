@@ -12,6 +12,10 @@ function updateOverlayWidth() {
   window.browserAPI.setOverlayWidth(overlays.sidebar ? 280 : overlays.menu ? 240 : 0);
 }
 
+function extensionIdFromUrl(url) {
+  return url?.match(/chromewebstore\.google\.com\/detail\/[^/]+\/([a-p]{32})/i)?.[1] || null;
+}
+
 function renderTabs() {
   const container = $('#tabs');
   container.innerHTML = '';
@@ -55,8 +59,10 @@ function renderState(nextState) {
   const active = state.tabs.find((tab) => tab.id === state.activeTabId);
   $('#address').value = active?.url || '';
   const onWebStore = active?.url?.includes('chromewebstore.google.com');
+  const currentExtensionId = extensionIdFromUrl(active?.url);
+  const isInstalled = Boolean(currentExtensionId && nextState.installedExtensions?.some((extension) => extension.id === currentExtensionId));
   $('#install-extension').hidden = !onWebStore;
-  $('#install-extension').textContent = nextState.installedExtensions?.length ? 'Instalado' : 'Instalar';
+  $('#install-extension').textContent = isInstalled ? 'Instalado' : 'Instalar';
   $('#back').disabled = !nextState.canGoBack;
   $('#forward').disabled = !nextState.canGoForward;
   renderTabs();
@@ -83,8 +89,14 @@ $('#forward').addEventListener('click', () => window.browserAPI.forward());
 $('#reload').addEventListener('click', () => window.browserAPI.reload());
 $('#new-tab').addEventListener('click', () => window.browserAPI.newTab());
 $('#install-extension').addEventListener('click', async () => {
-  const extensions = await window.browserAPI.installExtension();
-  $('#install-extension').textContent = extensions.length ? 'Instalado' : 'Instalar';
+  const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+  try {
+    await window.browserAPI.installExtension(active?.url);
+    $('#install-extension').textContent = 'Instalado';
+  } catch (error) {
+    $('#install-extension').textContent = 'Erro';
+    console.error(error);
+  }
 });
 $('#tile').addEventListener('click', () => window.browserAPI.toggleTile([...state.selected]));
 $('#select-all').addEventListener('click', () => {
@@ -95,8 +107,7 @@ $('#select-all').addEventListener('click', () => {
   updateSelectAllState();
 });
 $('#side-panel').addEventListener('click', () => {
-  overlays.sidebar = false;
-  $('#sidebar').hidden = true;
+  window.browserAPI.toggleOverlay('panel');
 });
 $('#favorite-pages').addEventListener('click', () => {
   window.browserAPI.toggleOverlay('favorites', state.favorites);
