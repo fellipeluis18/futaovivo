@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('browserAPI', {
   activateTab: (id) => ipcRenderer.send('browser:activate-tab', id),
   closeTab: (id) => ipcRenderer.send('browser:close-tab', id),
   reorderTabs: (ids) => ipcRenderer.send('browser:reorder-tabs', ids),
+  tabAction: (id, action) => ipcRenderer.send('browser:tab-action', id, action),
   back: () => ipcRenderer.send('browser:back'),
   forward: () => ipcRenderer.send('browser:forward'),
   reload: () => ipcRenderer.send('browser:reload'),

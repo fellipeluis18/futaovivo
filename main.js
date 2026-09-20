@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const MAX_TABS = 6;
+const MAX_TABS = 9;
 const HOME_URL = 'https://www.google.com';
 let mainWindow;
 let tabs = [];
@@ -65,6 +65,8 @@ function createTab(url = HOME_URL, options = {}) {
     title: options.title || 'Nova guia',
     url,
     settings: Boolean(options.settings),
+    pinned: Boolean(options.pinned),
+    muted: false,
     zoomFactor: 1,
     view: new BrowserView({
       webPreferences: {
@@ -95,6 +97,7 @@ function createTab(url = HOME_URL, options = {}) {
   tab.view.webContents.on('did-finish-load', sendState);
   tab.view.webContents.on('focus', () => {
     activeTabId = tab.id;
+    updateAudioState();
     sendState();
   });
   tab.view.webContents.on('did-finish-load', () => {
@@ -106,7 +109,7 @@ function createTab(url = HOME_URL, options = {}) {
     event.preventDefault();
     if (input.key === '0') tab.zoomFactor = 1;
     else tab.zoomFactor = Math.min(5, Math.max(0.25, tab.zoomFactor + (input.key === '-' ? -0.1 : 0.1)));
-    tab.view.webContents.setZoomFactor(tileMode ? getMosaicZoom(tileSelection.size) : tab.zoomFactor);
+    tab.view.webContents.setZoomFactor(tileMode ? getMosaicZoom(Math.min(tileSelection.size, 6)) : tab.zoomFactor);
   });
 
   tabs.push(tab);
@@ -134,8 +137,16 @@ function closeTab(tabId) {
 function activateTab(tabId) {
   if (!tabs.some((tab) => tab.id === tabId)) return;
   activeTabId = tabId;
+  updateAudioState();
   sendState();
   refreshBounds();
+}
+
+function updateAudioState() {
+  tabs.forEach((tab) => {
+    const mustMute = tileMode ? tab.id !== activeTabId || tab.muted : tab.muted;
+    tab.view.webContents.setAudioMuted(mustMute);
+  });
 }
 
 function getMosaicZoom(tabCount) {
@@ -148,7 +159,7 @@ function getMosaicZoom(tabCount) {
 function refreshBounds() {
   if (!mainWindow) return;
   const [width, height] = mainWindow.getContentSize();
-  const visibleTabs = tileMode ? tabs.filter((tab) => !tab.settings && tileSelection.has(tab.id)) : [getActiveTab()].filter(Boolean);
+  const visibleTabs = tileMode ? tabs.filter((tab) => !tab.settings && tileSelection.has(tab.id)).slice(0, 6) : [getActiveTab()].filter(Boolean);
   const panelWidth = overlayKind === 'panel' ? 240 : 0;
   const browserWidth = Math.max(1, width - panelWidth);
   if (overlayView) mainWindow.removeBrowserView(overlayView);
@@ -170,6 +181,7 @@ function refreshBounds() {
       tab.view.setAutoResize({ width: true, height: true });
     });
   }
+  updateAudioState();
   if (overlayView && overlayKind) {
     const overlayWidth = overlayKind === 'favorites' ? 300 : 240;
     const overlayHeight = overlayKind === 'favorites' ? 360 : Math.max(0, height - 46);
@@ -183,7 +195,7 @@ function sendState() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const active = getActiveTab();
   mainWindow.webContents.send('browser:state', {
-    tabs: tabs.map(({ id, title, url, settings }) => ({ id, title, url, settings })),
+    tabs: tabs.map(({ id, title, url, settings, pinned, muted }) => ({ id, title, url, settings, pinned, muted })),
     activeTabId,
     canGoBack: Boolean(active?.view.webContents.canGoBack()),
     canGoForward: Boolean(active?.view.webContents.canGoForward()),
@@ -286,6 +298,18 @@ app.whenReady().then(async () => {
   ipcMain.on('browser:set-tile-selection', (_event, selectedIds) => {
     tileSelection = new Set(selectedIds);
     if (tileMode) refreshBounds();
+  });
+  ipcMain.on('browser:tab-action', (_event, tabId, action) => {
+    const tab = tabs.find((item) => item.id === tabId);
+    if (!tab) return;
+    if (action === 'pin') {
+      tab.pinned = !tab.pinned;
+      tabs.sort((left, right) => Number(right.pinned) - Number(left.pinned));
+    }
+    if (action === 'mute') tab.muted = !tab.muted;
+    if (action === 'duplicate') createTab(tab.url, { title: tab.title, pinned: tab.pinned });
+    updateAudioState();
+    sendState();
   });
   ipcMain.on('browser:reorder-tabs', (_event, orderedIds) => {
     const positions = new Map(orderedIds.map((id, index) => [id, index]));
