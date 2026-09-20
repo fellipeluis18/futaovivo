@@ -89,7 +89,10 @@ function createTab(url = HOME_URL, options = {}) {
     sendState();
   });
   tab.view.webContents.on('did-finish-load', sendState);
-  tab.view.webContents.on('focus', () => activateTab(tab.id));
+  tab.view.webContents.on('focus', () => {
+    activeTabId = tab.id;
+    sendState();
+  });
   tab.view.webContents.on('did-finish-load', () => {
     tab.view.webContents.insertCSS('::-webkit-scrollbar { width: 0 !important; height: 0 !important; }').catch(() => {});
   });
@@ -99,10 +102,11 @@ function createTab(url = HOME_URL, options = {}) {
     event.preventDefault();
     if (input.key === '0') tab.zoomFactor = 1;
     else tab.zoomFactor = Math.min(5, Math.max(0.25, tab.zoomFactor + (input.key === '-' ? -0.1 : 0.1)));
-    tab.view.webContents.setZoomFactor(tileMode ? tab.zoomFactor * 0.9 : tab.zoomFactor);
+    tab.view.webContents.setZoomFactor(tileMode ? getMosaicZoom(tileSelection.size) : tab.zoomFactor);
   });
 
   tabs.push(tab);
+  if (!tab.settings) tileSelection.add(tab.id);
   if (!activeTabId) activeTabId = tab.id;
   if (options.settings) tab.view.webContents.loadFile(url);
   else tab.view.webContents.loadURL(url);
@@ -115,6 +119,7 @@ function closeTab(tabId) {
   const index = tabs.findIndex((tab) => tab.id === tabId);
   if (index < 0 || tabs[index].settings) return;
   const [tab] = tabs.splice(index, 1);
+  tileSelection.delete(tabId);
   if (mainWindow) mainWindow.removeBrowserView(tab.view);
   tab.view.webContents.destroy();
   if (activeTabId === tabId) activeTabId = tabs[index]?.id || tabs[index - 1]?.id || null;
@@ -125,8 +130,15 @@ function closeTab(tabId) {
 function activateTab(tabId) {
   if (!tabs.some((tab) => tab.id === tabId)) return;
   activeTabId = tabId;
-  refreshBounds();
   sendState();
+  refreshBounds();
+}
+
+function getMosaicZoom(tabCount) {
+  if (tabCount <= 1) return 1;
+  if (tabCount === 2) return 0.8;
+  if (tabCount <= 4) return 0.7;
+  return 0.6;
 }
 
 function refreshBounds() {
@@ -143,7 +155,7 @@ function refreshBounds() {
     const contentHeight = Math.max(0, height - 46);
     const gap = tileMode ? 2 : 0;
     const tileWidth = (browserWidth - gap * (columns - 1)) / columns;
-    const mosaicZoom = visibleTabs.length === 1 ? 1 : visibleTabs.length === 2 ? 0.8 : visibleTabs.length <= 4 ? 0.6 : 0.5;
+    const mosaicZoom = getMosaicZoom(visibleTabs.length);
     const tileHeight = (contentHeight - gap * (rows - 1)) / rows;
     visibleTabs.forEach((tab, index) => {
       const column = index % columns;
@@ -173,6 +185,7 @@ function sendState() {
     canGoForward: Boolean(active?.view.webContents.canGoForward()),
     isLoading: Boolean(active?.view.webContents.isLoading()),
     tileMode,
+    selectedTabIds: [...tileSelection],
     installedExtensions
   });
 }
@@ -291,8 +304,10 @@ app.whenReady().then(async () => {
       mainWindow.removeBrowserView(overlayView);
       mainWindow.addBrowserView(overlayView);
       overlayView.webContents.send('overlay:show', overlayKind, overlayData);
+      refreshBounds();
     } else {
       mainWindow.removeBrowserView(overlayView);
+      refreshBounds();
     }
   });
   ipcMain.on('browser:update-overlay-data', (_event, data) => {
@@ -302,6 +317,7 @@ app.whenReady().then(async () => {
   ipcMain.on('browser:close-overlay', () => {
     overlayKind = null;
     if (overlayView) mainWindow.removeBrowserView(overlayView);
+    refreshBounds();
   });
   ipcMain.on('browser:overlay-action', (_event, action) => {
     if (action === 'settings') {

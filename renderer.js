@@ -55,6 +55,7 @@ function renderTabs() {
 function renderState(nextState) {
   state.tabs = nextState.tabs;
   state.activeTabId = nextState.activeTabId;
+  state.selected = new Set(nextState.selectedTabIds || []);
   document.body.classList.toggle('tile-mode', nextState.tileMode);
   const active = state.tabs.find((tab) => tab.id === state.activeTabId);
   $('#address').value = active?.url || '';
