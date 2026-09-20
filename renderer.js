@@ -123,6 +123,7 @@ $('#favorite').addEventListener('click', () => {
   if (!state.favorites.some((favorite) => favorite.url === active.url)) state.favorites.push({ title: active.title, url: active.url });
   localStorage.setItem('favorites', JSON.stringify(state.favorites));
   $('#favorite').textContent = '★';
+  window.browserAPI.updateOverlayData(state.favorites);
   renderSidebar();
 });
 $('#menu-button').addEventListener('click', () => {

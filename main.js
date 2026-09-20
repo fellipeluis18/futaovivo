@@ -27,13 +27,26 @@ function extensionRegistryPath() {
   return path.join(app.getPath('userData'), 'installed-extensions.json');
 }
 
+function extensionOptionsPage(extensionPath) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(extensionPath, 'manifest.json'), 'utf8'));
+    return manifest.options_ui?.page || manifest.options_page || null;
+  } catch {
+    return null;
+  }
+}
+
 async function restoreInstalledExtensions() {
   if (!fs.existsSync(extensionRegistryPath())) return;
   try {
     const saved = JSON.parse(fs.readFileSync(extensionRegistryPath(), 'utf8'));
     for (const item of saved) {
+      if (item.enabled === false) {
+        installedExtensions.push(item);
+        continue;
+      }
       const extension = await session.defaultSession.loadExtension(item.path, { allowFileAccess: true });
-      installedExtensions.push({ id: extension.id, name: extension.name || item.name, version: extension.version, path: item.path });
+      installedExtensions.push({ ...item, id: extension.id, name: extension.name || item.name, version: extension.version, enabled: true, optionsPage: item.optionsPage || extensionOptionsPage(item.path) });
     }
   } catch {
     installedExtensions = [];
@@ -120,6 +133,8 @@ function refreshBounds() {
   if (!mainWindow) return;
   const [width, height] = mainWindow.getContentSize();
   const visibleTabs = tileMode ? tabs.filter((tab) => !tab.settings && tileSelection.has(tab.id)) : [getActiveTab()].filter(Boolean);
+  const panelWidth = overlayKind === 'panel' ? 240 : 0;
+  const browserWidth = Math.max(1, width - panelWidth);
   if (overlayView) mainWindow.removeBrowserView(overlayView);
   for (const tab of tabs) mainWindow.removeBrowserView(tab.view);
   if (visibleTabs.length) {
@@ -127,13 +142,14 @@ function refreshBounds() {
     const columns = visibleTabs.length >= 5 ? 3 : visibleTabs.length >= 2 ? 2 : 1;
     const contentHeight = Math.max(0, height - 46);
     const gap = tileMode ? 2 : 0;
-    const tileWidth = (width - gap * (columns - 1)) / columns;
+    const tileWidth = (browserWidth - gap * (columns - 1)) / columns;
+    const mosaicZoom = visibleTabs.length === 1 ? 1 : visibleTabs.length === 2 ? 0.8 : visibleTabs.length <= 4 ? 0.6 : 0.5;
     const tileHeight = (contentHeight - gap * (rows - 1)) / rows;
     visibleTabs.forEach((tab, index) => {
       const column = index % columns;
       const row = Math.floor(index / columns);
       mainWindow.addBrowserView(tab.view);
-      tab.view.webContents.setZoomFactor(tileMode ? tab.zoomFactor * 0.9 : tab.zoomFactor);
+      tab.view.webContents.setZoomFactor(tileMode ? mosaicZoom : tab.zoomFactor);
       tab.view.setBounds({ x: Math.floor(column * (tileWidth + gap)), y: 46 + Math.floor(row * (tileHeight + gap)), width: Math.ceil(tileWidth), height: Math.ceil(tileHeight) });
       tab.view.setAutoResize({ width: true, height: true });
     });
@@ -199,7 +215,7 @@ async function installCrx(url) {
   fs.mkdirSync(destination, { recursive: true });
   new AdmZip(crx.subarray(zipOffset)).extractAllTo(destination, true);
   const extension = await session.defaultSession.loadExtension(destination, { allowFileAccess: true });
-  const item = { id: extension.id, name: extension.name || extensionId, version: extension.version, path: destination };
+  const item = { id: extension.id, name: extension.name || extensionId, version: extension.version, path: destination, enabled: true, optionsPage: extensionOptionsPage(destination) };
   installedExtensions = [...installedExtensions.filter((entry) => entry.id !== item.id), item];
   fs.writeFileSync(extensionRegistryPath(), JSON.stringify(installedExtensions, null, 2));
   sendState();
@@ -279,6 +295,10 @@ app.whenReady().then(async () => {
       mainWindow.removeBrowserView(overlayView);
     }
   });
+  ipcMain.on('browser:update-overlay-data', (_event, data) => {
+    overlayData = data;
+    if (overlayView && overlayKind) overlayView.webContents.send('overlay:show', overlayKind, overlayData);
+  });
   ipcMain.on('browser:close-overlay', () => {
     overlayKind = null;
     if (overlayView) mainWindow.removeBrowserView(overlayView);
@@ -299,12 +319,41 @@ app.whenReady().then(async () => {
     const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'], title: 'Selecionar extensão descompactada' });
     if (result.canceled || !result.filePaths[0]) return installedExtensions;
     const extension = await session.defaultSession.loadExtension(result.filePaths[0], { allowFileAccess: true });
-    const item = { id: extension.id, name: extension.name || path.basename(result.filePaths[0]), version: extension.version, path: result.filePaths[0] };
+    const item = { id: extension.id, name: extension.name || path.basename(result.filePaths[0]), version: extension.version, path: result.filePaths[0], enabled: true, optionsPage: extensionOptionsPage(result.filePaths[0]) };
     installedExtensions = [...installedExtensions.filter((entry) => entry.id !== item.id), item];
     fs.mkdirSync(app.getPath('userData'), { recursive: true });
     fs.writeFileSync(extensionRegistryPath(), JSON.stringify(installedExtensions, null, 2));
     sendState();
     return installedExtensions;
+  });
+  ipcMain.handle('extensions:toggle', async (_event, id) => {
+    const item = installedExtensions.find((extension) => extension.id === id);
+    if (!item) return installedExtensions;
+    if (item.enabled === false) {
+      const extension = await session.defaultSession.loadExtension(item.path, { allowFileAccess: true });
+      item.id = extension.id;
+      item.enabled = true;
+    } else {
+      session.defaultSession.removeExtension(item.id);
+      item.enabled = false;
+    }
+    fs.writeFileSync(extensionRegistryPath(), JSON.stringify(installedExtensions, null, 2));
+    sendState();
+    return installedExtensions;
+  });
+  ipcMain.handle('extensions:remove', async (_event, id) => {
+    const item = installedExtensions.find((extension) => extension.id === id);
+    if (item?.enabled !== false) session.defaultSession.removeExtension(id);
+    installedExtensions = installedExtensions.filter((extension) => extension.id !== id);
+    fs.writeFileSync(extensionRegistryPath(), JSON.stringify(installedExtensions, null, 2));
+    sendState();
+    return installedExtensions;
+  });
+  ipcMain.handle('extensions:options', (_event, id) => {
+    const extension = installedExtensions.find((item) => item.id === id);
+    if (!extension?.optionsPage) return false;
+    createTab(`chrome-extension://${extension.id}/${extension.optionsPage}`, { title: `${extension.name} - Opções` });
+    return true;
   });
   ipcMain.on('browser:toggle-devtools', () => getActiveTab()?.view.webContents.toggleDevTools());
   ipcMain.on('window:minimize', () => mainWindow.minimize());
