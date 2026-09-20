@@ -9,13 +9,14 @@ function renderTabs() {
     item.className = `tab ${tab.id === state.activeTabId ? 'active' : ''}`;
     item.draggable = !tab.settings;
     item.dataset.id = tab.id;
-    item.innerHTML = `<input type="checkbox" class="tab-check" ${state.selected.has(tab.id) ? 'checked' : ''} aria-label="Selecionar ${escapeHtml(tab.title)}"><span class="tab-title">${escapeHtml(tab.title)}</span><button class="tab-close" aria-label="Fechar aba">×</button>`;
+    item.innerHTML = `<span class="tab-title">${escapeHtml(tab.title)}</span><input type="checkbox" class="tab-check" ${state.selected.has(tab.id) ? 'checked' : ''} aria-label="Selecionar ${escapeHtml(tab.title)}"><button class="tab-close" aria-label="Fechar aba">×</button>`;
     item.addEventListener('click', (event) => {
       if (!event.target.closest('.tab-close') && !event.target.closest('.tab-check')) window.browserAPI.activateTab(tab.id);
     });
     item.querySelector('.tab-close').addEventListener('click', () => window.browserAPI.closeTab(tab.id));
     item.querySelector('.tab-check').addEventListener('change', (event) => {
       event.target.checked ? state.selected.add(tab.id) : state.selected.delete(tab.id);
+      window.browserAPI.setTileSelection([...state.selected]);
       renderSidebar();
     });
     item.addEventListener('dragstart', (event) => event.dataTransfer.setData('text/plain', tab.id));
@@ -62,10 +63,11 @@ $('#back').addEventListener('click', () => window.browserAPI.back());
 $('#forward').addEventListener('click', () => window.browserAPI.forward());
 $('#reload').addEventListener('click', () => window.browserAPI.reload());
 $('#new-tab').addEventListener('click', () => window.browserAPI.newTab());
-$('#tile').addEventListener('click', () => window.browserAPI.toggleTile());
+$('#tile').addEventListener('click', () => window.browserAPI.toggleTile([...state.selected]));
 $('#select-all').addEventListener('click', () => {
   const allSelected = state.tabs.filter((tab) => !tab.settings).every((tab) => state.selected.has(tab.id));
   state.tabs.filter((tab) => !tab.settings).forEach((tab) => allSelected ? state.selected.delete(tab.id) : state.selected.add(tab.id));
+  window.browserAPI.setTileSelection([...state.selected]);
   renderTabs(); renderSidebar();
 });
 $('#side-panel').addEventListener('click', () => { $('#sidebar').hidden = !$('#sidebar').hidden; });
