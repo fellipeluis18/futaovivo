@@ -2,6 +2,12 @@ const $ = (selector) => document.querySelector(selector);
 const state = { tabs: [], activeTabId: null, selected: new Set(), favorites: JSON.parse(localStorage.getItem('favorites') || '[]') };
 const overlays = { sidebar: false, menu: false };
 
+function updateSelectAllState() {
+  const internetTabs = state.tabs.filter((tab) => !tab.settings);
+  const allSelected = internetTabs.length > 0 && internetTabs.every((tab) => state.selected.has(tab.id));
+  $('#select-all').classList.toggle('all-selected', allSelected);
+}
+
 function updateOverlayWidth() {
   window.browserAPI.setOverlayWidth(overlays.sidebar ? 280 : overlays.menu ? 240 : 0);
 }
@@ -22,6 +28,7 @@ function renderTabs() {
     item.querySelector('.tab-check').addEventListener('change', (event) => {
       event.target.checked ? state.selected.add(tab.id) : state.selected.delete(tab.id);
       window.browserAPI.setTileSelection([...state.selected]);
+      updateSelectAllState();
       renderSidebar();
     });
     item.addEventListener('dragstart', (event) => event.dataTransfer.setData('text/plain', tab.id));
@@ -38,6 +45,7 @@ function renderTabs() {
     });
     container.appendChild(item);
   }
+  updateSelectAllState();
 }
 
 function renderState(nextState) {
@@ -76,6 +84,7 @@ $('#select-all').addEventListener('click', () => {
   state.tabs.filter((tab) => !tab.settings).forEach((tab) => allSelected ? state.selected.delete(tab.id) : state.selected.add(tab.id));
   window.browserAPI.setTileSelection([...state.selected]);
   renderTabs(); renderSidebar();
+  updateSelectAllState();
 });
 $('#side-panel').addEventListener('click', () => {
   overlays.sidebar = !overlays.sidebar;

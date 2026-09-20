@@ -10,6 +10,7 @@ button:disabled { opacity: .35; cursor: default; }
 .icon-button, .window-actions button, .new-tab { width: 27px; height: 27px; padding: 0; background: transparent; border-radius: 5px; font-size: 19px; line-height: 1; }
 .icon-button:hover, .window-actions button:hover, .new-tab:hover { background: #2a3a46; }
 .tile-mode #tile { color: #5ee58a; background: #214b35; }
+#select-all.all-selected { color: #5ee58a; background: #214b35; }
 .favorite-button { width: 27px; flex: 0 0 27px; color: #f2b84b; -webkit-app-region: no-drag; }
 .address-wrap { width: 380px; min-width: 120px; flex: 0 1 380px; height: 28px; display: flex; align-items: center; background: #0e171e; border: 1px solid #334651; border-radius: 8px; -webkit-app-region: no-drag; }
 .address-wrap:focus-within { border-color: #f2b84b; }
@@ -17,7 +18,7 @@ button:disabled { opacity: .35; cursor: default; }
 .tab-strip { display: flex; flex: 1 1 auto; min-width: 0; height: 28px; gap: 3px; overflow: hidden; -webkit-app-region: no-drag; }
 .tab { min-width: 78px; max-width: 150px; flex: 1 1 90px; display: flex; align-items: center; gap: 4px; padding: 0 5px; background: #1e2d38; border: 1px solid transparent; border-radius: 5px; color: #aebac4; font-size: 10px; }
 .tab.active { color: #fff; background: #2b3b47; border-color: #53636e; }
-.tab-check { order: 2; accent-color: #f2b84b; margin: 0; }
+.tab-check { order: 2; accent-color: #5ee58a; margin: 0; }
 .tab-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tab-close { order: 3; width: 16px; padding: 0; background: transparent; color: #aebac4; font-size: 13px; }
 .window-actions { margin-left: auto; }

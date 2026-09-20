@@ -53,6 +53,9 @@ function createTab(url = HOME_URL, options = {}) {
     sendState();
   });
   tab.view.webContents.on('did-finish-load', sendState);
+  tab.view.webContents.on('did-finish-load', () => {
+    tab.view.webContents.insertCSS('::-webkit-scrollbar { width: 0 !important; height: 0 !important; }').catch(() => {});
+  });
   tab.view.webContents.on('before-input-event', (event, input) => {
     if (!input.control && !input.meta) return;
     if (input.key !== '+' && input.key !== '=' && input.key !== '-' && input.key !== '0') return;
