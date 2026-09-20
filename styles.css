@@ -1,0 +1,33 @@
+* { box-sizing: border-box; }
+:root { font-family: "Segoe UI", sans-serif; color: #e8edf2; background: #101820; }
+body { margin: 0; overflow: hidden; background: #101820; }
+.toolbar { height: 46px; display: flex; align-items: center; gap: 6px; padding: 5px 8px; background: #17232d; border-bottom: 1px solid #2c3a45; -webkit-app-region: drag; }
+button, input { font: inherit; }
+button { color: inherit; border: 0; cursor: pointer; }
+button:disabled { opacity: .35; cursor: default; }
+.brand { width: 28px; height: 28px; display: grid; place-items: center; color: #17232d; background: #f2b84b; font-size: 11px; font-weight: 800; border-radius: 6px; -webkit-app-region: no-drag; }
+.nav-actions, .window-actions { display: flex; gap: 2px; -webkit-app-region: no-drag; }
+.icon-button, .window-actions button, .new-tab { width: 27px; height: 27px; padding: 0; background: transparent; border-radius: 5px; font-size: 19px; line-height: 1; }
+.icon-button:hover, .window-actions button:hover, .new-tab:hover { background: #2a3a46; }
+.address-wrap { min-width: 150px; flex: 1 1 270px; height: 30px; display: flex; align-items: center; background: #0e171e; border: 1px solid #334651; border-radius: 8px; -webkit-app-region: no-drag; }
+.address-wrap:focus-within { border-color: #f2b84b; }
+#address { width: 100%; min-width: 0; padding: 0 10px; color: #e8edf2; background: transparent; border: 0; outline: 0; font-size: 12px; }
+#favorite { width: 30px; background: transparent; color: #f2b84b; font-size: 17px; }
+.tab-strip { display: flex; min-width: 120px; max-width: 40vw; height: 30px; gap: 3px; overflow: hidden; -webkit-app-region: no-drag; }
+.tab { min-width: 100px; max-width: 180px; flex: 1 1 110px; display: flex; align-items: center; gap: 5px; padding: 0 6px; background: #1e2d38; border: 1px solid transparent; border-radius: 6px; color: #aebac4; font-size: 11px; }
+.tab.active { color: #fff; background: #2b3b47; border-color: #53636e; }
+.tab-check { accent-color: #f2b84b; margin: 0; }
+.tab-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab-close { width: 18px; padding: 0; background: transparent; color: #aebac4; font-size: 15px; }
+.window-actions { margin-left: auto; }
+.window-actions button { border-radius: 0; font-size: 15px; }
+#close:hover { color: white; background: #b93636; }
+.menu { position: absolute; z-index: 10; top: 42px; right: 8px; width: 230px; padding: 6px; background: #1b2a34; border: 1px solid #40515c; border-radius: 7px; box-shadow: 0 10px 24px #0008; -webkit-app-region: no-drag; }
+.menu button { width: 100%; padding: 9px 10px; text-align: left; background: transparent; border-radius: 4px; color: #e8edf2; font-size: 12px; }
+.menu button:hover { background: #2d414d; }
+.sidebar { position: absolute; z-index: 8; top: 46px; right: 0; width: 270px; height: calc(100vh - 46px); padding: 14px; background: #17232d; border-left: 1px solid #334651; box-shadow: -8px 0 18px #0003; }
+.sidebar-heading { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.sidebar-heading button { background: transparent; font-size: 18px; }
+.sidebar p { color: #99a8b2; font-size: 12px; }
+#selected-list button { display: block; width: 100%; padding: 7px; margin-top: 4px; text-align: left; background: #223440; border-radius: 4px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 900px) { .brand, #tile, #select-all { display: none; } .tab-strip { max-width: 28vw; } .address-wrap { flex-basis: 160px; } }

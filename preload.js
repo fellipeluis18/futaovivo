@@ -1,0 +1,20 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('browserAPI', {
+  onState: (callback) => ipcRenderer.on('browser:state', (_event, state) => callback(state)),
+  navigate: (value) => ipcRenderer.send('browser:navigate', value),
+  newTab: () => ipcRenderer.send('browser:new-tab'),
+  activateTab: (id) => ipcRenderer.send('browser:activate-tab', id),
+  closeTab: (id) => ipcRenderer.send('browser:close-tab', id),
+  back: () => ipcRenderer.send('browser:back'),
+  forward: () => ipcRenderer.send('browser:forward'),
+  reload: () => ipcRenderer.send('browser:reload'),
+  toggleTile: () => ipcRenderer.send('browser:toggle-tile'),
+  toggleDevTools: () => ipcRenderer.send('browser:toggle-devtools'),
+  minimize: () => ipcRenderer.send('window:minimize'),
+  maximize: () => ipcRenderer.send('window:maximize'),
+  close: () => ipcRenderer.send('window:close'),
+  clearCookies: (id) => ipcRenderer.invoke('browser:clear-cookies', id),
+  clearAllCookies: () => ipcRenderer.invoke('browser:clear-all-cookies'),
+  openSettings: () => ipcRenderer.invoke('browser:open-settings')
+});

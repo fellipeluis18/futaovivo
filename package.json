@@ -1,0 +1,13 @@
+{
+  "name": "futaovivo-browser",
+  "version": "1.0.0",
+  "description": "Navegador desktop baseado em Electron",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:headless": "xvfb-run -a electron . --no-sandbox"
+  },
+  "devDependencies": {
+    "electron": "^38.1.0"
+  }
+}
