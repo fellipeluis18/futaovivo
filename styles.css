@@ -30,4 +30,5 @@ button:disabled { opacity: .35; cursor: default; }
 .sidebar-heading button { background: transparent; font-size: 18px; }
 .sidebar p { color: #99a8b2; font-size: 12px; }
 #selected-list button { display: block; width: 100%; padding: 7px; margin-top: 4px; text-align: left; background: #223440; border-radius: 4px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.favorite-entry { display: block; width: 100%; padding: 7px; margin-top: 4px; text-align: left; background: #2a3b43; border-radius: 4px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 900px) { .toolbar { gap: 3px; padding-left: 5px; padding-right: 5px; } .tab-strip { min-width: 0; } .address-wrap { flex-basis: 150px; } .icon-button, .window-actions button, .new-tab { width: 24px; } }

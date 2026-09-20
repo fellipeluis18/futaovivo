@@ -9,6 +9,7 @@ let activeTabId = null;
 let nextTabId = 1;
 let tileMode = false;
 let tileSelection = new Set();
+let overlayWidth = 0;
 
 function getActiveTab() {
   return tabs.find((tab) => tab.id === activeTabId);
@@ -79,7 +80,8 @@ function activateTab(tabId) {
 
 function refreshBounds() {
   if (!mainWindow) return;
-  const [width, height] = mainWindow.getContentSize();
+  const [windowWidth, height] = mainWindow.getContentSize();
+  const width = Math.max(1, windowWidth - overlayWidth);
   const visibleTabs = tileMode ? tabs.filter((tab) => !tab.settings && tileSelection.has(tab.id)) : [getActiveTab()].filter(Boolean);
   for (const tab of tabs) mainWindow.removeBrowserView(tab.view);
   if (!visibleTabs.length) return;
@@ -93,6 +95,7 @@ function refreshBounds() {
     const column = index % columns;
     const row = Math.floor(index / columns);
     mainWindow.addBrowserView(tab.view);
+    tab.view.webContents.setZoomFactor(tileMode ? 0.9 : 1);
     tab.view.setBounds({ x: Math.floor(column * (tileWidth + gap)), y: 46 + Math.floor(row * (tileHeight + gap)), width: Math.ceil(tileWidth), height: Math.ceil(tileHeight) });
     tab.view.setAutoResize({ width: true, height: true });
   });
@@ -157,6 +160,10 @@ app.whenReady().then(() => {
   ipcMain.on('browser:set-tile-selection', (_event, selectedIds) => {
     tileSelection = new Set(selectedIds);
     if (tileMode) refreshBounds();
+  });
+  ipcMain.on('browser:set-overlay-width', (_event, width) => {
+    overlayWidth = Math.max(0, Number(width) || 0);
+    refreshBounds();
   });
   ipcMain.on('browser:toggle-devtools', () => getActiveTab()?.view.webContents.toggleDevTools());
   ipcMain.on('window:minimize', () => mainWindow.minimize());

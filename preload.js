@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('browserAPI', {
   reload: () => ipcRenderer.send('browser:reload'),
   toggleTile: (selectedIds) => ipcRenderer.send('browser:toggle-tile', selectedIds),
   setTileSelection: (selectedIds) => ipcRenderer.send('browser:set-tile-selection', selectedIds),
+  setOverlayWidth: (width) => ipcRenderer.send('browser:set-overlay-width', width),
   toggleDevTools: () => ipcRenderer.send('browser:toggle-devtools'),
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),

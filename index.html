@@ -24,6 +24,7 @@
       <button id="select-all" class="icon-button" title="Selecionar todas as abas" aria-label="Selecionar todas as abas">☑</button>
       <button id="side-panel" class="icon-button" title="Painel lateral" aria-label="Painel lateral">▥</button>
       <button id="menu-button" class="icon-button" title="Menu" aria-label="Menu">⋮</button>
+      <button id="favorite-pages" class="icon-button" title="Abrir favoritos" aria-label="Abrir favoritos">★</button>
     </div>
     <div id="menu" class="menu" hidden>
       <button id="settings">Perfil e configurações</button>
@@ -41,6 +42,7 @@
   <aside id="sidebar" class="sidebar" hidden>
     <div class="sidebar-heading"><strong>Painel lateral</strong><button id="close-sidebar">×</button></div>
     <p>Favoritos e abas selecionadas</p>
+    <div id="favorites-list"></div>
     <div id="selected-list"></div>
   </aside>
   <script src="renderer.js"></script>

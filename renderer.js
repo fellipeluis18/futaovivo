@@ -1,5 +1,10 @@
 const $ = (selector) => document.querySelector(selector);
 const state = { tabs: [], activeTabId: null, selected: new Set(), favorites: JSON.parse(localStorage.getItem('favorites') || '[]') };
+const overlays = { sidebar: false, menu: false };
+
+function updateOverlayWidth() {
+  window.browserAPI.setOverlayWidth(overlays.sidebar ? 280 : overlays.menu ? 240 : 0);
+}
 
 function renderTabs() {
   const container = $('#tabs');
@@ -48,10 +53,12 @@ function renderState(nextState) {
 }
 
 function renderSidebar() {
+  $('#favorites-list').innerHTML = state.favorites.map((favorite) => `<button class="favorite-entry" data-url="${escapeHtml(favorite.url)}">★ ${escapeHtml(favorite.title || favorite.url)}</button>`).join('');
   $('#selected-list').innerHTML = [...state.selected].map((id) => {
     const tab = state.tabs.find((entry) => entry.id === id);
     return tab ? `<button data-id="${tab.id}">${escapeHtml(tab.title)}</button>` : '';
   }).join('');
+  document.querySelectorAll('.favorite-entry').forEach((button) => button.addEventListener('click', () => window.browserAPI.navigate(button.dataset.url)));
 }
 
 function escapeHtml(value) {
@@ -70,20 +77,38 @@ $('#select-all').addEventListener('click', () => {
   window.browserAPI.setTileSelection([...state.selected]);
   renderTabs(); renderSidebar();
 });
-$('#side-panel').addEventListener('click', () => { $('#sidebar').hidden = !$('#sidebar').hidden; });
-$('#close-sidebar').addEventListener('click', () => { $('#sidebar').hidden = true; });
+$('#side-panel').addEventListener('click', () => {
+  overlays.sidebar = !overlays.sidebar;
+  $('#sidebar').hidden = !overlays.sidebar;
+  updateOverlayWidth();
+});
+$('#favorite-pages').addEventListener('click', () => {
+  overlays.sidebar = true;
+  $('#sidebar').hidden = false;
+  updateOverlayWidth();
+});
+$('#close-sidebar').addEventListener('click', () => {
+  overlays.sidebar = false;
+  $('#sidebar').hidden = true;
+  updateOverlayWidth();
+});
 $('#favorite').addEventListener('click', () => {
   const active = state.tabs.find((tab) => tab.id === state.activeTabId);
   if (!active || active.settings) return;
   if (!state.favorites.some((favorite) => favorite.url === active.url)) state.favorites.push({ title: active.title, url: active.url });
   localStorage.setItem('favorites', JSON.stringify(state.favorites));
   $('#favorite').textContent = '★';
+  renderSidebar();
 });
-$('#menu-button').addEventListener('click', () => { $('#menu').hidden = !$('#menu').hidden; });
+$('#menu-button').addEventListener('click', () => {
+  overlays.menu = !overlays.menu;
+  $('#menu').hidden = !overlays.menu;
+  updateOverlayWidth();
+});
 $('#settings').addEventListener('click', () => window.browserAPI.openSettings());
 $('#devtools').addEventListener('click', () => window.browserAPI.toggleDevTools());
-$('#clear-current').addEventListener('click', async () => { await window.browserAPI.clearCookies(state.activeTabId); $('#menu').hidden = true; });
-$('#clear-all').addEventListener('click', async () => { await window.browserAPI.clearAllCookies(); $('#menu').hidden = true; });
+$('#clear-current').addEventListener('click', async () => { await window.browserAPI.clearCookies(state.activeTabId); overlays.menu = false; $('#menu').hidden = true; updateOverlayWidth(); });
+$('#clear-all').addEventListener('click', async () => { await window.browserAPI.clearAllCookies(); overlays.menu = false; $('#menu').hidden = true; updateOverlayWidth(); });
 $('#minimize').addEventListener('click', () => window.browserAPI.minimize());
 $('#maximize').addEventListener('click', () => window.browserAPI.maximize());
 $('#close').addEventListener('click', () => window.browserAPI.close());
