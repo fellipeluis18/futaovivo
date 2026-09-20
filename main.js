@@ -117,25 +117,29 @@ function refreshBounds() {
   if (!mainWindow) return;
   const [width, height] = mainWindow.getContentSize();
   const visibleTabs = tileMode ? tabs.filter((tab) => !tab.settings && tileSelection.has(tab.id)) : [getActiveTab()].filter(Boolean);
+  if (overlayView) mainWindow.removeBrowserView(overlayView);
   for (const tab of tabs) mainWindow.removeBrowserView(tab.view);
-  if (!visibleTabs.length) return;
-  const rows = visibleTabs.length >= 3 ? 2 : 1;
-  const columns = visibleTabs.length >= 5 ? 3 : visibleTabs.length >= 2 ? 2 : 1;
-  const contentHeight = Math.max(0, height - 46);
-  const gap = tileMode ? 2 : 0;
-  const tileWidth = (width - gap * (columns - 1)) / columns;
-  const tileHeight = (contentHeight - gap * (rows - 1)) / rows;
-  visibleTabs.forEach((tab, index) => {
-    const column = index % columns;
-    const row = Math.floor(index / columns);
-    mainWindow.addBrowserView(tab.view);
-    tab.view.webContents.setZoomFactor(tileMode ? tab.zoomFactor * 0.9 : tab.zoomFactor);
-    tab.view.setBounds({ x: Math.floor(column * (tileWidth + gap)), y: 46 + Math.floor(row * (tileHeight + gap)), width: Math.ceil(tileWidth), height: Math.ceil(tileHeight) });
-    tab.view.setAutoResize({ width: true, height: true });
-  });
+  if (visibleTabs.length) {
+    const rows = visibleTabs.length >= 3 ? 2 : 1;
+    const columns = visibleTabs.length >= 5 ? 3 : visibleTabs.length >= 2 ? 2 : 1;
+    const contentHeight = Math.max(0, height - 46);
+    const gap = tileMode ? 2 : 0;
+    const tileWidth = (width - gap * (columns - 1)) / columns;
+    const tileHeight = (contentHeight - gap * (rows - 1)) / rows;
+    visibleTabs.forEach((tab, index) => {
+      const column = index % columns;
+      const row = Math.floor(index / columns);
+      mainWindow.addBrowserView(tab.view);
+      tab.view.webContents.setZoomFactor(tileMode ? tab.zoomFactor * 0.9 : tab.zoomFactor);
+      tab.view.setBounds({ x: Math.floor(column * (tileWidth + gap)), y: 46 + Math.floor(row * (tileHeight + gap)), width: Math.ceil(tileWidth), height: Math.ceil(tileHeight) });
+      tab.view.setAutoResize({ width: true, height: true });
+    });
+  }
   if (overlayView && overlayKind) {
-    const overlayWidth = overlayKind === 'sidebar' ? 280 : 240;
-    overlayView.setBounds({ x: width - overlayWidth, y: 46, width: overlayWidth, height: contentHeight });
+    const overlayWidth = overlayKind === 'favorites' ? 300 : 240;
+    const overlayHeight = overlayKind === 'favorites' ? 360 : Math.max(0, height - 46);
+    const overlayX = overlayKind === 'favorites' ? 100 : width - overlayWidth;
+    overlayView.setBounds({ x: overlayX, y: 46, width: overlayWidth, height: overlayHeight });
     mainWindow.addBrowserView(overlayView);
   }
 }
@@ -220,8 +224,12 @@ app.whenReady().then(async () => {
     overlayData = data || null;
     if (overlayKind) {
       const [, height] = mainWindow.getContentSize();
-      const overlayWidth = overlayKind === 'sidebar' ? 280 : 240;
-      overlayView.setBounds({ x: mainWindow.getContentSize()[0] - overlayWidth, y: 46, width: overlayWidth, height: Math.max(0, height - 46) });
+      const overlayWidth = overlayKind === 'favorites' ? 300 : 240;
+      const overlayHeight = overlayKind === 'favorites' ? 360 : Math.max(0, height - 46);
+      const overlayX = overlayKind === 'favorites' ? 100 : mainWindow.getContentSize()[0] - overlayWidth;
+      overlayView.setBounds({ x: overlayX, y: 46, width: overlayWidth, height: overlayHeight });
+      mainWindow.removeBrowserView(overlayView);
+      mainWindow.addBrowserView(overlayView);
       overlayView.webContents.send('overlay:show', overlayKind, overlayData);
     } else {
       mainWindow.removeBrowserView(overlayView);

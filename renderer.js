@@ -95,16 +95,11 @@ $('#select-all').addEventListener('click', () => {
   updateSelectAllState();
 });
 $('#side-panel').addEventListener('click', () => {
-  overlays.sidebar = !overlays.sidebar;
-  $('#sidebar').hidden = !overlays.sidebar;
-  updateOverlayWidth();
-  window.browserAPI.toggleOverlay('sidebar', state.favorites);
+  overlays.sidebar = false;
+  $('#sidebar').hidden = true;
 });
 $('#favorite-pages').addEventListener('click', () => {
-  overlays.sidebar = true;
-  $('#sidebar').hidden = false;
-  updateOverlayWidth();
-  window.browserAPI.toggleOverlay('sidebar', state.favorites);
+  window.browserAPI.toggleOverlay('favorites', state.favorites);
 });
 $('#close-sidebar').addEventListener('click', () => {
   overlays.sidebar = false;
