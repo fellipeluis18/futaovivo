@@ -6,6 +6,7 @@ button, input { font: inherit; }
 button { color: inherit; border: 0; cursor: pointer; }
 button:disabled { opacity: .35; cursor: default; }
 .nav-actions, .window-actions { display: flex; gap: 2px; -webkit-app-region: no-drag; }
+.browser-tools { display: flex; flex: 0 0 auto; gap: 2px; -webkit-app-region: no-drag; }
 .icon-button, .window-actions button, .new-tab { width: 27px; height: 27px; padding: 0; background: transparent; border-radius: 5px; font-size: 19px; line-height: 1; }
 .icon-button:hover, .window-actions button:hover, .new-tab:hover { background: #2a3a46; }
 .favorite-button { color: #f2b84b; -webkit-app-region: no-drag; }
@@ -29,4 +30,4 @@ button:disabled { opacity: .35; cursor: default; }
 .sidebar-heading button { background: transparent; font-size: 18px; }
 .sidebar p { color: #99a8b2; font-size: 12px; }
 #selected-list button { display: block; width: 100%; padding: 7px; margin-top: 4px; text-align: left; background: #223440; border-radius: 4px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 900px) { #tile, #select-all { display: none; } .tab-strip { max-width: 28vw; } .address-wrap { flex-basis: 150px; } }
+@media (max-width: 900px) { .toolbar { gap: 3px; padding-left: 5px; padding-right: 5px; } .tab-strip { max-width: 20vw; min-width: 70px; } .address-wrap { flex-basis: 150px; } .icon-button, .window-actions button, .new-tab { width: 24px; } }
