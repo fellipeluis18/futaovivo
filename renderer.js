@@ -44,6 +44,7 @@ function renderTabs() {
       if (from >= 0 && to >= 0) {
         const [moved] = state.tabs.splice(from, 1);
         state.tabs.splice(to, 0, moved);
+        window.browserAPI.reorderTabs(state.tabs.map((entry) => entry.id));
         renderTabs();
       }
     });
@@ -59,6 +60,7 @@ function renderState(nextState) {
   document.body.classList.toggle('tile-mode', nextState.tileMode);
   const active = state.tabs.find((tab) => tab.id === state.activeTabId);
   $('#address').value = active?.url || '';
+  $('#favorite').textContent = active && state.favorites.some((favorite) => favorite.url === active.url) ? '★' : '☆';
   const onWebStore = active?.url?.includes('chromewebstore.google.com');
   const currentExtensionId = extensionIdFromUrl(active?.url);
   const isInstalled = Boolean(currentExtensionId && nextState.installedExtensions?.some((extension) => extension.id === currentExtensionId));
@@ -111,7 +113,7 @@ $('#side-panel').addEventListener('click', () => {
   window.browserAPI.toggleOverlay('panel');
 });
 $('#favorite-pages').addEventListener('click', () => {
-  window.browserAPI.toggleOverlay('favorites', state.favorites);
+  window.browserAPI.showOverlay('favorites', state.favorites);
 });
 $('#close-sidebar').addEventListener('click', () => {
   overlays.sidebar = false;
@@ -121,10 +123,13 @@ $('#close-sidebar').addEventListener('click', () => {
 $('#favorite').addEventListener('click', () => {
   const active = state.tabs.find((tab) => tab.id === state.activeTabId);
   if (!active || active.settings) return;
-  if (!state.favorites.some((favorite) => favorite.url === active.url)) state.favorites.push({ title: active.title, url: active.url });
+  const favoriteIndex = state.favorites.findIndex((favorite) => favorite.url === active.url);
+  if (favoriteIndex >= 0) state.favorites.splice(favoriteIndex, 1);
+  else state.favorites.push({ title: active.title, url: active.url });
   localStorage.setItem('favorites', JSON.stringify(state.favorites));
-  $('#favorite').textContent = '★';
+  $('#favorite').textContent = favoriteIndex >= 0 ? '☆' : '★';
   window.browserAPI.updateOverlayData(state.favorites);
+  window.browserAPI.toggleOverlay('favorites', state.favorites);
   renderSidebar();
 });
 $('#menu-button').addEventListener('click', () => {

@@ -61,7 +61,7 @@ content.addEventListener('contextmenu', async (event) => {
   document.querySelectorAll('.extension-context-menu').forEach((menu) => menu.remove());
   const menu = document.createElement('div');
   menu.className = 'extension-context-menu';
-  menu.innerHTML = '<button data-extension-action="options">Abrir Opções</button><button data-extension-action="manage">Gerenciar Extensão</button><button data-extension-action="remove">Remover Extensão</button>';
+  menu.innerHTML = '<button data-extension-action="options">Opções</button><button data-extension-action="manage">Gerenciar Extensão</button><button data-extension-action="remove">Remover Extensão</button>';
   menu.style.left = `${event.offsetX}px`;
   menu.style.top = `${event.offsetY}px`;
   content.appendChild(menu);

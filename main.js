@@ -66,7 +66,7 @@ function createTab(url = HOME_URL, options = {}) {
       webPreferences: {
         contextIsolation: true,
         sandbox: true,
-        partition: options.partition || `persist:tab-${nextTabId}`
+        partition: options.partition || 'persist:browser'
       }
     })
   };
@@ -117,7 +117,7 @@ function createTab(url = HOME_URL, options = {}) {
 
 function closeTab(tabId) {
   const index = tabs.findIndex((tab) => tab.id === tabId);
-  if (index < 0 || tabs[index].settings) return;
+  if (index < 0) return;
   const [tab] = tabs.splice(index, 1);
   tileSelection.delete(tabId);
   if (mainWindow) mainWindow.removeBrowserView(tab.view);
@@ -283,6 +283,12 @@ app.whenReady().then(async () => {
     tileSelection = new Set(selectedIds);
     if (tileMode) refreshBounds();
   });
+  ipcMain.on('browser:reorder-tabs', (_event, orderedIds) => {
+    const positions = new Map(orderedIds.map((id, index) => [id, index]));
+    tabs.sort((left, right) => (positions.get(left.id) ?? tabs.length) - (positions.get(right.id) ?? tabs.length));
+    refreshBounds();
+    sendState();
+  });
   ipcMain.on('browser:set-overlay-width', (_event, width) => { overlayWidth = Math.max(0, Number(width) || 0); });
   ipcMain.on('browser:toggle-overlay', (_event, kind, data) => {
     if (!overlayView) {
@@ -309,6 +315,19 @@ app.whenReady().then(async () => {
       mainWindow.removeBrowserView(overlayView);
       refreshBounds();
     }
+  });
+  ipcMain.on('browser:show-overlay', (_event, kind, data) => {
+    if (!overlayView) {
+      overlayView = new BrowserView({ webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true } });
+      overlayView.webContents.on('did-finish-load', () => {
+        if (overlayKind) overlayView.webContents.send('overlay:show', overlayKind, overlayData);
+      });
+      overlayView.webContents.loadFile('overlay.html');
+    }
+    overlayKind = kind;
+    overlayData = data || null;
+    refreshBounds();
+    overlayView.webContents.send('overlay:show', overlayKind, overlayData);
   });
   ipcMain.on('browser:update-overlay-data', (_event, data) => {
     overlayData = data;
