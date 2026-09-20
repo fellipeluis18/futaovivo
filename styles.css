@@ -9,6 +9,7 @@ button:disabled { opacity: .35; cursor: default; }
 .browser-tools { display: flex; flex: 0 0 auto; gap: 2px; -webkit-app-region: no-drag; }
 .icon-button, .window-actions button, .new-tab { width: 27px; height: 27px; padding: 0; background: transparent; border-radius: 5px; font-size: 19px; line-height: 1; }
 .icon-button:hover, .window-actions button:hover, .new-tab:hover { background: #2a3a46; }
+.tile-mode #tile { color: #5ee58a; background: #214b35; }
 .favorite-button { width: 27px; flex: 0 0 27px; color: #f2b84b; -webkit-app-region: no-drag; }
 .address-wrap { width: 380px; min-width: 120px; flex: 0 1 380px; height: 28px; display: flex; align-items: center; background: #0e171e; border: 1px solid #334651; border-radius: 8px; -webkit-app-region: no-drag; }
 .address-wrap:focus-within { border-color: #f2b84b; }

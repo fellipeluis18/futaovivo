@@ -10,6 +10,8 @@ let nextTabId = 1;
 let tileMode = false;
 let tileSelection = new Set();
 let overlayWidth = 0;
+let overlayView;
+let overlayKind = null;
 
 function getActiveTab() {
   return tabs.find((tab) => tab.id === activeTabId);
@@ -23,6 +25,7 @@ function createTab(url = HOME_URL, options = {}) {
     title: options.title || 'Nova guia',
     url,
     settings: Boolean(options.settings),
+    zoomFactor: 1,
     view: new BrowserView({
       webPreferences: {
         contextIsolation: true,
@@ -50,6 +53,14 @@ function createTab(url = HOME_URL, options = {}) {
     sendState();
   });
   tab.view.webContents.on('did-finish-load', sendState);
+  tab.view.webContents.on('before-input-event', (event, input) => {
+    if (!input.control && !input.meta) return;
+    if (input.key !== '+' && input.key !== '=' && input.key !== '-' && input.key !== '0') return;
+    event.preventDefault();
+    if (input.key === '0') tab.zoomFactor = 1;
+    else tab.zoomFactor = Math.min(5, Math.max(0.25, tab.zoomFactor + (input.key === '-' ? -0.1 : 0.1)));
+    tab.view.webContents.setZoomFactor(tileMode ? tab.zoomFactor * 0.9 : tab.zoomFactor);
+  });
 
   tabs.push(tab);
   if (!activeTabId) activeTabId = tab.id;
@@ -80,8 +91,7 @@ function activateTab(tabId) {
 
 function refreshBounds() {
   if (!mainWindow) return;
-  const [windowWidth, height] = mainWindow.getContentSize();
-  const width = Math.max(1, windowWidth - overlayWidth);
+  const [width, height] = mainWindow.getContentSize();
   const visibleTabs = tileMode ? tabs.filter((tab) => !tab.settings && tileSelection.has(tab.id)) : [getActiveTab()].filter(Boolean);
   for (const tab of tabs) mainWindow.removeBrowserView(tab.view);
   if (!visibleTabs.length) return;
@@ -95,10 +105,15 @@ function refreshBounds() {
     const column = index % columns;
     const row = Math.floor(index / columns);
     mainWindow.addBrowserView(tab.view);
-    tab.view.webContents.setZoomFactor(tileMode ? 0.9 : 1);
+    tab.view.webContents.setZoomFactor(tileMode ? tab.zoomFactor * 0.9 : tab.zoomFactor);
     tab.view.setBounds({ x: Math.floor(column * (tileWidth + gap)), y: 46 + Math.floor(row * (tileHeight + gap)), width: Math.ceil(tileWidth), height: Math.ceil(tileHeight) });
     tab.view.setAutoResize({ width: true, height: true });
   });
+  if (overlayView && overlayKind) {
+    const overlayWidth = overlayKind === 'sidebar' ? 280 : 240;
+    overlayView.setBounds({ x: width - overlayWidth, y: 46, width: overlayWidth, height: contentHeight });
+    mainWindow.addBrowserView(overlayView);
+  }
 }
 
 function sendState() {
@@ -161,9 +176,38 @@ app.whenReady().then(() => {
     tileSelection = new Set(selectedIds);
     if (tileMode) refreshBounds();
   });
-  ipcMain.on('browser:set-overlay-width', (_event, width) => {
-    overlayWidth = Math.max(0, Number(width) || 0);
-    refreshBounds();
+  ipcMain.on('browser:set-overlay-width', (_event, width) => { overlayWidth = Math.max(0, Number(width) || 0); });
+  ipcMain.on('browser:toggle-overlay', (_event, kind) => {
+    if (!overlayView) {
+      overlayView = new BrowserView({ webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true } });
+      mainWindow.addBrowserView(overlayView);
+      overlayView.webContents.on('did-finish-load', () => {
+        if (overlayKind) overlayView.webContents.send('overlay:show', overlayKind);
+      });
+      overlayView.webContents.loadFile('overlay.html');
+    }
+    overlayKind = overlayKind === kind ? null : kind;
+    if (overlayKind) {
+      const [, height] = mainWindow.getContentSize();
+      const overlayWidth = overlayKind === 'sidebar' ? 280 : 240;
+      overlayView.setBounds({ x: mainWindow.getContentSize()[0] - overlayWidth, y: 46, width: overlayWidth, height: Math.max(0, height - 46) });
+      overlayView.webContents.send('overlay:show', overlayKind);
+    } else {
+      mainWindow.removeBrowserView(overlayView);
+    }
+  });
+  ipcMain.on('browser:close-overlay', () => {
+    overlayKind = null;
+    if (overlayView) mainWindow.removeBrowserView(overlayView);
+  });
+  ipcMain.on('browser:overlay-action', (_event, action) => {
+    if (action === 'settings') {
+      const existing = tabs.find((tab) => tab.settings);
+      return existing ? activateTab(existing.id) : createTab(path.join(__dirname, 'settings.html'), { settings: true, title: 'Configurações' });
+    }
+    if (action === 'devtools') return getActiveTab()?.view.webContents.toggleDevTools();
+    if (action === 'clear-current') return getActiveTab()?.view.webContents.session.clearStorageData({ storages: ['cookies'] });
+    if (action === 'clear-all') return Promise.all(tabs.map((tab) => tab.view.webContents.session.clearStorageData({ storages: ['cookies'] })));
   });
   ipcMain.on('browser:toggle-devtools', () => getActiveTab()?.view.webContents.toggleDevTools());
   ipcMain.on('window:minimize', () => mainWindow.minimize());

@@ -81,11 +81,13 @@ $('#side-panel').addEventListener('click', () => {
   overlays.sidebar = !overlays.sidebar;
   $('#sidebar').hidden = !overlays.sidebar;
   updateOverlayWidth();
+  window.browserAPI.toggleOverlay('sidebar');
 });
 $('#favorite-pages').addEventListener('click', () => {
   overlays.sidebar = true;
   $('#sidebar').hidden = false;
   updateOverlayWidth();
+  window.browserAPI.toggleOverlay('sidebar');
 });
 $('#close-sidebar').addEventListener('click', () => {
   overlays.sidebar = false;
@@ -104,6 +106,7 @@ $('#menu-button').addEventListener('click', () => {
   overlays.menu = !overlays.menu;
   $('#menu').hidden = !overlays.menu;
   updateOverlayWidth();
+  window.browserAPI.toggleOverlay('menu');
 });
 $('#settings').addEventListener('click', () => window.browserAPI.openSettings());
 $('#devtools').addEventListener('click', () => window.browserAPI.toggleDevTools());
