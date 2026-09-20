@@ -54,6 +54,9 @@ function renderState(nextState) {
   document.body.classList.toggle('tile-mode', nextState.tileMode);
   const active = state.tabs.find((tab) => tab.id === state.activeTabId);
   $('#address').value = active?.url || '';
+  const onWebStore = active?.url?.includes('chromewebstore.google.com');
+  $('#install-extension').hidden = !onWebStore;
+  $('#install-extension').textContent = nextState.installedExtensions?.length ? 'Instalado' : 'Instalar';
   $('#back').disabled = !nextState.canGoBack;
   $('#forward').disabled = !nextState.canGoForward;
   renderTabs();
@@ -74,10 +77,15 @@ function escapeHtml(value) {
 }
 
 $('#address-form').addEventListener('submit', (event) => { event.preventDefault(); window.browserAPI.navigate($('#address').value); });
+$('#address').addEventListener('focus', (event) => event.target.select());
 $('#back').addEventListener('click', () => window.browserAPI.back());
 $('#forward').addEventListener('click', () => window.browserAPI.forward());
 $('#reload').addEventListener('click', () => window.browserAPI.reload());
 $('#new-tab').addEventListener('click', () => window.browserAPI.newTab());
+$('#install-extension').addEventListener('click', async () => {
+  const extensions = await window.browserAPI.installExtension();
+  $('#install-extension').textContent = extensions.length ? 'Instalado' : 'Instalar';
+});
 $('#tile').addEventListener('click', () => window.browserAPI.toggleTile([...state.selected]));
 $('#select-all').addEventListener('click', () => {
   const allSelected = state.tabs.filter((tab) => !tab.settings).every((tab) => state.selected.has(tab.id));
@@ -90,13 +98,13 @@ $('#side-panel').addEventListener('click', () => {
   overlays.sidebar = !overlays.sidebar;
   $('#sidebar').hidden = !overlays.sidebar;
   updateOverlayWidth();
-  window.browserAPI.toggleOverlay('sidebar');
+  window.browserAPI.toggleOverlay('sidebar', state.favorites);
 });
 $('#favorite-pages').addEventListener('click', () => {
   overlays.sidebar = true;
   $('#sidebar').hidden = false;
   updateOverlayWidth();
-  window.browserAPI.toggleOverlay('sidebar');
+  window.browserAPI.toggleOverlay('sidebar', state.favorites);
 });
 $('#close-sidebar').addEventListener('click', () => {
   overlays.sidebar = false;

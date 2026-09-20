@@ -1,4 +1,5 @@
-const { app, BrowserWindow, BrowserView, ipcMain, session } = require('electron');
+const { app, BrowserWindow, BrowserView, ipcMain, session, dialog } = require('electron');
+const fs = require('node:fs');
 const path = require('node:path');
 
 const MAX_TABS = 6;
@@ -12,9 +13,28 @@ let tileSelection = new Set();
 let overlayWidth = 0;
 let overlayView;
 let overlayKind = null;
+let overlayData = null;
+let installedExtensions = [];
 
 function getActiveTab() {
   return tabs.find((tab) => tab.id === activeTabId);
+}
+
+function extensionRegistryPath() {
+  return path.join(app.getPath('userData'), 'installed-extensions.json');
+}
+
+async function restoreInstalledExtensions() {
+  if (!fs.existsSync(extensionRegistryPath())) return;
+  try {
+    const saved = JSON.parse(fs.readFileSync(extensionRegistryPath(), 'utf8'));
+    for (const item of saved) {
+      const extension = await session.defaultSession.loadExtension(item.path, { allowFileAccess: true });
+      installedExtensions.push({ id: extension.id, name: extension.name || item.name, version: extension.version, path: item.path });
+    }
+  } catch {
+    installedExtensions = [];
+  }
 }
 
 function createTab(url = HOME_URL, options = {}) {
@@ -53,6 +73,7 @@ function createTab(url = HOME_URL, options = {}) {
     sendState();
   });
   tab.view.webContents.on('did-finish-load', sendState);
+  tab.view.webContents.on('focus', () => activateTab(tab.id));
   tab.view.webContents.on('did-finish-load', () => {
     tab.view.webContents.insertCSS('::-webkit-scrollbar { width: 0 !important; height: 0 !important; }').catch(() => {});
   });
@@ -128,8 +149,13 @@ function sendState() {
     canGoBack: Boolean(active?.view.webContents.canGoBack()),
     canGoForward: Boolean(active?.view.webContents.canGoForward()),
     isLoading: Boolean(active?.view.webContents.isLoading()),
-    tileMode
+    tileMode,
+    installedExtensions
   });
+}
+
+function showExtensionMenu() {
+  if (overlayView) overlayView.webContents.send('overlay:extensions', installedExtensions);
 }
 
 function navigate(value) {
@@ -160,7 +186,8 @@ function createWindow() {
   createTab();
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await restoreInstalledExtensions();
   createWindow();
   ipcMain.on('browser:navigate', (_event, value) => navigate(value));
   ipcMain.on('browser:new-tab', () => createTab());
@@ -180,21 +207,22 @@ app.whenReady().then(() => {
     if (tileMode) refreshBounds();
   });
   ipcMain.on('browser:set-overlay-width', (_event, width) => { overlayWidth = Math.max(0, Number(width) || 0); });
-  ipcMain.on('browser:toggle-overlay', (_event, kind) => {
+  ipcMain.on('browser:toggle-overlay', (_event, kind, data) => {
     if (!overlayView) {
       overlayView = new BrowserView({ webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true } });
       mainWindow.addBrowserView(overlayView);
       overlayView.webContents.on('did-finish-load', () => {
-        if (overlayKind) overlayView.webContents.send('overlay:show', overlayKind);
+        if (overlayKind) overlayView.webContents.send('overlay:show', overlayKind, overlayData);
       });
       overlayView.webContents.loadFile('overlay.html');
     }
     overlayKind = overlayKind === kind ? null : kind;
+    overlayData = data || null;
     if (overlayKind) {
       const [, height] = mainWindow.getContentSize();
       const overlayWidth = overlayKind === 'sidebar' ? 280 : 240;
       overlayView.setBounds({ x: mainWindow.getContentSize()[0] - overlayWidth, y: 46, width: overlayWidth, height: Math.max(0, height - 46) });
-      overlayView.webContents.send('overlay:show', overlayKind);
+      overlayView.webContents.send('overlay:show', overlayKind, overlayData);
     } else {
       mainWindow.removeBrowserView(overlayView);
     }
@@ -211,6 +239,19 @@ app.whenReady().then(() => {
     if (action === 'devtools') return getActiveTab()?.view.webContents.toggleDevTools();
     if (action === 'clear-current') return getActiveTab()?.view.webContents.session.clearStorageData({ storages: ['cookies'] });
     if (action === 'clear-all') return Promise.all(tabs.map((tab) => tab.view.webContents.session.clearStorageData({ storages: ['cookies'] })));
+    if (action === 'extensions') return showExtensionMenu();
+  });
+  ipcMain.handle('extensions:list', () => installedExtensions);
+  ipcMain.handle('extensions:install', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, { properties: ['openDirectory'], title: 'Selecionar extensão descompactada' });
+    if (result.canceled || !result.filePaths[0]) return installedExtensions;
+    const extension = await session.defaultSession.loadExtension(result.filePaths[0], { allowFileAccess: true });
+    const item = { id: extension.id, name: extension.name || path.basename(result.filePaths[0]), version: extension.version, path: result.filePaths[0] };
+    installedExtensions = [...installedExtensions.filter((entry) => entry.id !== item.id), item];
+    fs.mkdirSync(app.getPath('userData'), { recursive: true });
+    fs.writeFileSync(extensionRegistryPath(), JSON.stringify(installedExtensions, null, 2));
+    sendState();
+    return installedExtensions;
   });
   ipcMain.on('browser:toggle-devtools', () => getActiveTab()?.view.webContents.toggleDevTools());
   ipcMain.on('window:minimize', () => mainWindow.minimize());

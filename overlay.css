@@ -7,3 +7,5 @@ header button { background: transparent; font-size: 18px; }
 p { color: #99a8b2; }
 .menu-item, .favorite-entry { display: block; width: 100%; margin-top: 4px; padding: 9px 10px; text-align: left; background: #223440; }
 .menu-item:hover, .favorite-entry:hover { background: #2d414d; }
+.menu-item span { float: right; color: #5ee58a; font-size: 16px; }
+.menu-item small { float: right; color: #99a8b2; }

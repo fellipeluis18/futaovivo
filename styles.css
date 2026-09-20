@@ -7,6 +7,7 @@ button { color: inherit; border: 0; cursor: pointer; }
 button:disabled { opacity: .35; cursor: default; }
 .nav-actions, .window-actions { display: flex; gap: 2px; -webkit-app-region: no-drag; }
 .browser-tools { display: flex; flex: 0 0 auto; gap: 2px; -webkit-app-region: no-drag; }
+.install-extension { width: auto; padding: 0 7px; color: #5ee58a; font-size: 11px; }
 .icon-button, .window-actions button, .new-tab { width: 27px; height: 27px; padding: 0; background: transparent; border-radius: 5px; font-size: 19px; line-height: 1; }
 .icon-button:hover, .window-actions button:hover, .new-tab:hover { background: #2a3a46; }
 .tile-mode #tile { color: #5ee58a; background: #214b35; }
