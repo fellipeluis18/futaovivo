@@ -62,9 +62,12 @@ content.addEventListener('contextmenu', async (event) => {
   const menu = document.createElement('div');
   menu.className = 'extension-context-menu';
   menu.innerHTML = '<button data-extension-action="options">Opções</button><button data-extension-action="manage">Gerenciar Extensão</button><button data-extension-action="remove">Remover Extensão</button>';
-  menu.style.left = `${event.offsetX}px`;
-  menu.style.top = `${event.offsetY}px`;
   content.appendChild(menu);
+  const menuWidth = menu.offsetWidth;
+  const menuHeight = menu.offsetHeight;
+  const margin = 8;
+  menu.style.left = `${Math.max(margin, Math.min(event.clientX, window.innerWidth - menuWidth - margin))}px`;
+  menu.style.top = `${Math.max(margin, Math.min(event.clientY, window.innerHeight - menuHeight - margin))}px`;
   menu.addEventListener('click', async (menuEvent) => {
     const action = menuEvent.target.dataset.extensionAction;
     if (action === 'options') await window.browserAPI.openExtensionOptions(entry.dataset.extensionId);

@@ -11,6 +11,6 @@ p { color: #99a8b2; }
 .menu-item small { float: right; color: #99a8b2; }
 .extension-entry { position: relative; padding-right: 38px; }
 .extension-toggle { position: absolute; top: 11px; right: 10px; accent-color: #5ee58a; }
-.extension-context-menu { position: absolute; z-index: 2; min-width: 170px; padding: 4px; background: #1b2a34; border: 1px solid #40515c; border-radius: 5px; box-shadow: 0 8px 20px #0008; }
+.extension-context-menu { position: fixed; z-index: 2; min-width: 170px; padding: 4px; background: #1b2a34; border: 1px solid #40515c; border-radius: 5px; box-shadow: 0 8px 20px #0008; }
 .extension-context-menu button { display: block; width: 100%; padding: 8px; text-align: left; background: transparent; }
 .extension-context-menu button:hover { background: #2d414d; }
