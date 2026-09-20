@@ -124,7 +124,7 @@ function createTab(url = HOME_URL, options = {}) {
 
 function closeTab(tabId) {
   const index = tabs.findIndex((tab) => tab.id === tabId);
-  if (index < 0) return;
+  if (index < 0 || tabs[index].pinned) return;
   const [tab] = tabs.splice(index, 1);
   tileSelection.delete(tabId);
   if (mainWindow) mainWindow.removeBrowserView(tab.view);
@@ -144,14 +144,13 @@ function activateTab(tabId) {
 
 function updateAudioState() {
   tabs.forEach((tab) => {
-    const mustMute = tileMode ? tab.id !== activeTabId || tab.muted : tab.muted;
-    tab.view.webContents.setAudioMuted(mustMute);
+    tab.view.webContents.setAudioMuted(tab.id !== activeTabId || tab.muted);
   });
 }
 
 function getMosaicZoom(tabCount) {
   if (tabCount <= 1) return 1;
-  if (tabCount === 2) return 0.8;
+  if (tabCount === 2) return 0.75;
   if (tabCount <= 4) return 0.7;
   return 0.6;
 }
@@ -183,10 +182,12 @@ function refreshBounds() {
   }
   updateAudioState();
   if (overlayView && overlayKind) {
-    const overlayWidth = overlayKind === 'favorites' ? 300 : 240;
-    const overlayHeight = overlayKind === 'favorites' ? 360 : Math.max(0, height - 46);
-    const overlayX = overlayKind === 'favorites' ? 100 : width - overlayWidth;
-    overlayView.setBounds({ x: overlayX, y: 46, width: overlayWidth, height: overlayHeight });
+    const isTabContext = overlayKind === 'tab-context';
+    const overlayWidth = isTabContext ? 180 : overlayKind === 'favorites' ? 300 : 240;
+    const overlayHeight = isTabContext ? 176 : overlayKind === 'favorites' ? 360 : Math.max(0, height - 46);
+    const overlayX = isTabContext ? Math.max(8, Math.min(overlayData.x, width - overlayWidth - 8)) : overlayKind === 'favorites' ? 100 : width - overlayWidth;
+    const overlayY = isTabContext ? Math.max(0, Math.min(overlayData.y, height - overlayHeight)) : 46;
+    overlayView.setBounds({ x: overlayX, y: overlayY, width: overlayWidth, height: overlayHeight });
     mainWindow.addBrowserView(overlayView);
   }
 }
@@ -308,12 +309,19 @@ app.whenReady().then(async () => {
     }
     if (action === 'mute') tab.muted = !tab.muted;
     if (action === 'duplicate') createTab(tab.url, { title: tab.title, pinned: tab.pinned });
+    if (action === 'close-right') {
+      const rightTabs = tabs.slice(tabs.findIndex((item) => item.id === tabId) + 1).filter((item) => !item.pinned);
+      rightTabs.forEach((item) => closeTab(item.id));
+      return;
+    }
     updateAudioState();
     sendState();
   });
   ipcMain.on('browser:reorder-tabs', (_event, orderedIds) => {
     const positions = new Map(orderedIds.map((id, index) => [id, index]));
-    tabs.sort((left, right) => (positions.get(left.id) ?? tabs.length) - (positions.get(right.id) ?? tabs.length));
+    const movable = tabs.filter((tab) => !tab.pinned);
+    movable.sort((left, right) => (positions.get(left.id) ?? tabs.length) - (positions.get(right.id) ?? tabs.length));
+    tabs = [...tabs.filter((tab) => tab.pinned), ...movable];
     refreshBounds();
     sendState();
   });
@@ -331,10 +339,12 @@ app.whenReady().then(async () => {
     overlayData = data || null;
     if (overlayKind) {
       const [, height] = mainWindow.getContentSize();
-      const overlayWidth = overlayKind === 'favorites' ? 300 : 240;
-      const overlayHeight = overlayKind === 'favorites' ? 360 : Math.max(0, height - 46);
-      const overlayX = overlayKind === 'favorites' ? 100 : mainWindow.getContentSize()[0] - overlayWidth;
-      overlayView.setBounds({ x: overlayX, y: 46, width: overlayWidth, height: overlayHeight });
+      const isTabContext = overlayKind === 'tab-context';
+      const overlayWidth = isTabContext ? 180 : overlayKind === 'favorites' ? 300 : 240;
+      const overlayHeight = isTabContext ? 176 : overlayKind === 'favorites' ? 360 : Math.max(0, height - 46);
+      const overlayX = isTabContext ? data.x : overlayKind === 'favorites' ? 100 : mainWindow.getContentSize()[0] - overlayWidth;
+      const overlayY = isTabContext ? data.y : 46;
+      overlayView.setBounds({ x: overlayX, y: overlayY, width: overlayWidth, height: overlayHeight });
       mainWindow.removeBrowserView(overlayView);
       mainWindow.addBrowserView(overlayView);
       overlayView.webContents.send('overlay:show', overlayKind, overlayData);

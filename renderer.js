@@ -19,11 +19,10 @@ function extensionIdFromUrl(url) {
 function renderTabs() {
   const container = $('#tabs');
   container.innerHTML = '';
-  closeTabContextMenu();
   for (const tab of state.tabs) {
     const item = document.createElement('div');
     item.className = `tab ${tab.id === state.activeTabId ? 'active' : ''} ${tab.pinned ? 'pinned' : ''}`;
-    item.draggable = !tab.settings;
+    item.draggable = !tab.settings && !tab.pinned;
     item.dataset.id = tab.id;
     item.innerHTML = `<span class="tab-title">${escapeHtml(tab.title)}</span><input type="checkbox" class="tab-check" ${state.selected.has(tab.id) ? 'checked' : ''} aria-label="Selecionar ${escapeHtml(tab.title)}"><button class="tab-close" aria-label="Fechar aba">×</button>`;
     item.addEventListener('click', (event) => {
@@ -40,7 +39,7 @@ function renderTabs() {
     item.addEventListener('dragover', (event) => event.preventDefault());
     item.addEventListener('contextmenu', (event) => {
       event.preventDefault();
-      openTabContextMenu(event.clientX, event.clientY, tab);
+      window.browserAPI.showOverlay('tab-context', { x: event.clientX, y: event.clientY, tabId: tab.id, pinned: tab.pinned, muted: tab.muted });
     });
     item.addEventListener('drop', (event) => {
       event.preventDefault();
@@ -56,25 +55,6 @@ function renderTabs() {
     container.appendChild(item);
   }
   updateSelectAllState();
-}
-
-function closeTabContextMenu() {
-  document.querySelector('.tab-context-menu')?.remove();
-}
-
-function openTabContextMenu(x, y, tab) {
-  closeTabContextMenu();
-  const menu = document.createElement('div');
-  menu.className = 'tab-context-menu';
-  menu.innerHTML = `<button data-action="pin">${tab.pinned ? 'Desafixar' : 'Fixar'}</button><button data-action="mute">${tab.muted ? 'Ativar som' : 'Desativar Som'}</button><button data-action="duplicate">Duplicar</button>`;
-  menu.style.left = `${Math.min(x, window.innerWidth - 160)}px`;
-  menu.style.top = `${Math.min(y, window.innerHeight - 120)}px`;
-  document.body.appendChild(menu);
-  menu.addEventListener('click', (event) => {
-    const action = event.target.closest('button')?.dataset.action;
-    if (action) window.browserAPI.tabAction(tab.id, action);
-    closeTabContextMenu();
-  });
 }
 
 function renderState(nextState) {
@@ -165,6 +145,3 @@ $('#maximize').addEventListener('click', () => window.browserAPI.maximize());
 $('#close').addEventListener('click', () => window.browserAPI.close());
 window.addEventListener('keydown', (event) => { if (event.key === 'F5') { event.preventDefault(); window.browserAPI.reload(); } });
 window.browserAPI.onState(renderState);
-document.addEventListener('click', (event) => {
-  if (!event.target.closest('.tab-context-menu')) closeTabContextMenu();
-});
