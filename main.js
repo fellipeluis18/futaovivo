@@ -67,6 +67,7 @@ function createTab(url = HOME_URL, options = {}) {
     settings: Boolean(options.settings),
     pinned: Boolean(options.pinned),
     muted: false,
+    audible: false,
     zoomFactor: 1,
     view: new BrowserView({
       webPreferences: {
@@ -98,6 +99,10 @@ function createTab(url = HOME_URL, options = {}) {
   tab.view.webContents.on('focus', () => {
     activeTabId = tab.id;
     updateAudioState();
+    sendState();
+  });
+  tab.view.webContents.on('audio-state-changed', (_event, audible) => {
+    tab.audible = audible;
     sendState();
   });
   tab.view.webContents.on('did-finish-load', () => {
@@ -196,7 +201,7 @@ function sendState() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const active = getActiveTab();
   mainWindow.webContents.send('browser:state', {
-    tabs: tabs.map(({ id, title, url, settings, pinned, muted }) => ({ id, title, url, settings, pinned, muted })),
+    tabs: tabs.map(({ id, title, url, settings, pinned, muted, audible }) => ({ id, title, url, settings, pinned, muted, audible })),
     activeTabId,
     canGoBack: Boolean(active?.view.webContents.canGoBack()),
     canGoForward: Boolean(active?.view.webContents.canGoForward()),

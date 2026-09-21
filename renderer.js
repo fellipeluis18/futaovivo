@@ -24,11 +24,16 @@ function renderTabs() {
     item.className = `tab ${tab.id === state.activeTabId ? 'active' : ''} ${tab.pinned ? 'pinned' : ''}`;
     item.draggable = !tab.settings && !tab.pinned;
     item.dataset.id = tab.id;
-    item.innerHTML = `<span class="tab-title">${escapeHtml(tab.title)}</span><input type="checkbox" class="tab-check" ${state.selected.has(tab.id) ? 'checked' : ''} aria-label="Selecionar ${escapeHtml(tab.title)}"><button class="tab-close" aria-label="Fechar aba">×</button>`;
+    const showSoundButton = tab.audible || tab.muted;
+    item.innerHTML = `<span class="tab-title">${escapeHtml(tab.title)}</span><button class="sound-indicator" type="button" title="${tab.muted ? 'Ativar som' : 'Silenciar'}" aria-label="${tab.muted ? 'Ativar som' : 'Silenciar'}" ${showSoundButton ? '' : 'hidden'}>${tab.muted ? '🔇' : '🔊'}</button><input type="checkbox" class="tab-check" ${state.selected.has(tab.id) ? 'checked' : ''} aria-label="Selecionar ${escapeHtml(tab.title)}"><button class="tab-close" aria-label="Fechar aba">×</button>`;
     item.addEventListener('click', (event) => {
       if (!event.target.closest('.tab-close') && !event.target.closest('.tab-check')) window.browserAPI.activateTab(tab.id);
     });
     item.querySelector('.tab-close').addEventListener('click', () => window.browserAPI.closeTab(tab.id));
+    item.querySelector('.sound-indicator').addEventListener('click', (event) => {
+      event.stopPropagation();
+      window.browserAPI.tabAction(tab.id, 'mute');
+    });
     item.querySelector('.tab-check').addEventListener('change', (event) => {
       event.target.checked ? state.selected.add(tab.id) : state.selected.delete(tab.id);
       window.browserAPI.setTileSelection([...state.selected]);
