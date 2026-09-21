@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('browserAPI', {
   setTileSelection: (selectedIds) => ipcRenderer.send('browser:set-tile-selection', selectedIds),
   setOverlayWidth: (width) => ipcRenderer.send('browser:set-overlay-width', width),
   updateOverlayData: (data) => ipcRenderer.send('browser:update-overlay-data', data),
+  favoriteAction: (action, data) => ipcRenderer.send('browser:favorite-action', action, data),
+  onFavoriteAction: (callback) => ipcRenderer.on('favorites:action', (_event, action, data) => callback(action, data)),
   toggleOverlay: (kind, data) => ipcRenderer.send('browser:toggle-overlay', kind, data),
   showOverlay: (kind, data) => ipcRenderer.send('browser:show-overlay', kind, data),
   closeOverlay: () => ipcRenderer.send('browser:close-overlay'),

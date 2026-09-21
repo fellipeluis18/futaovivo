@@ -1,5 +1,9 @@
 const $ = (selector) => document.querySelector(selector);
-const state = { tabs: [], activeTabId: null, selected: new Set(), favorites: JSON.parse(localStorage.getItem('favorites') || '[]') };
+function normalizeFavorites(items) {
+  return items.map((item, index) => item.type ? item : { type: 'bookmark', id: `bookmark-${index}-${Date.now()}`, title: item.title, url: item.url });
+}
+
+const state = { tabs: [], activeTabId: null, selected: new Set(), favorites: normalizeFavorites(JSON.parse(localStorage.getItem('favorites') || '[]')) };
 const overlays = { sidebar: false, menu: false };
 
 function updateSelectAllState() {
@@ -82,12 +86,72 @@ function renderState(nextState) {
 }
 
 function renderSidebar() {
-  $('#favorites-list').innerHTML = state.favorites.map((favorite) => `<button class="favorite-entry" data-url="${escapeHtml(favorite.url)}">★ ${escapeHtml(favorite.title || favorite.url)}</button>`).join('');
+  $('#favorites-list').innerHTML = state.favorites.filter((favorite) => favorite.type === 'bookmark').map((favorite) => `<button class="favorite-entry" data-url="${escapeHtml(favorite.url)}">★ ${escapeHtml(favorite.title || favorite.url)}</button>`).join('');
   $('#selected-list').innerHTML = [...state.selected].map((id) => {
     const tab = state.tabs.find((entry) => entry.id === id);
     return tab ? `<button data-id="${tab.id}">${escapeHtml(tab.title)}</button>` : '';
   }).join('');
   document.querySelectorAll('.favorite-entry').forEach((button) => button.addEventListener('click', () => window.browserAPI.navigate(button.dataset.url)));
+}
+
+function findFavoriteByUrl(url, items = state.favorites) {
+  for (const item of items) {
+    if (item.type === 'bookmark' && item.url === url) return item;
+    if (item.type === 'folder') {
+      const found = findFavoriteByUrl(url, item.children);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function saveFavorites() {
+  localStorage.setItem('favorites', JSON.stringify(state.favorites));
+  window.browserAPI.updateOverlayData(state.favorites);
+  renderSidebar();
+}
+
+function findFavorite(id, items = state.favorites) {
+  for (const item of items) {
+    if (item.id === id) return item;
+    if (item.type === 'folder') {
+      const found = findFavorite(id, item.children);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function removeFavorite(id, items = state.favorites) {
+  const index = items.findIndex((item) => item.id === id);
+  if (index >= 0) return items.splice(index, 1)[0];
+  for (const item of items) if (item.type === 'folder') {
+    const removed = removeFavorite(id, item.children);
+    if (removed) return removed;
+  }
+  return null;
+}
+
+function handleFavoriteAction(action, data = {}) {
+  if (action === 'create-folder') {
+    const name = data.name?.trim();
+    if (name) state.favorites.push({ type: 'folder', id: `folder-${Date.now()}`, name, children: [] });
+  } else if (action === 'edit') {
+    const item = findFavorite(data.id);
+    const value = prompt(item?.type === 'folder' ? 'Nome da pasta:' : 'Nome do favorito:', item?.name || item?.title || '');
+    if (item && value?.trim()) item[item.type === 'folder' ? 'name' : 'title'] = value.trim();
+  } else if (action === 'delete') {
+    removeFavorite(data.id);
+  } else if (action === 'move') {
+    const item = removeFavorite(data.id);
+    const folder = data.folderId ? findFavorite(data.folderId) : null;
+    if (item) (folder?.type === 'folder' ? folder.children : state.favorites).push(item);
+  } else if (action === 'reorder') {
+    const item = removeFavorite(data.id);
+    const target = data.folderId ? findFavorite(data.folderId) : null;
+    if (item) (target?.type === 'folder' ? target.children : state.favorites).splice(data.index ?? 0, 0, item);
+  }
+  saveFavorites();
 }
 
 function escapeHtml(value) {
@@ -132,14 +196,12 @@ $('#close-sidebar').addEventListener('click', () => {
 $('#favorite').addEventListener('click', () => {
   const active = state.tabs.find((tab) => tab.id === state.activeTabId);
   if (!active || active.settings) return;
-  const favoriteIndex = state.favorites.findIndex((favorite) => favorite.url === active.url);
-  if (favoriteIndex >= 0) state.favorites.splice(favoriteIndex, 1);
-  else state.favorites.push({ title: active.title, url: active.url });
-  localStorage.setItem('favorites', JSON.stringify(state.favorites));
-  $('#favorite').textContent = favoriteIndex >= 0 ? '☆' : '★';
-  window.browserAPI.updateOverlayData(state.favorites);
-  window.browserAPI.toggleOverlay('favorites', state.favorites);
-  renderSidebar();
+  const favorite = findFavoriteByUrl(active.url);
+  if (favorite) removeFavorite(favorite.id);
+  else state.favorites.push({ type: 'bookmark', id: `bookmark-${Date.now()}`, title: active.title, url: active.url });
+  saveFavorites();
+  $('#favorite').textContent = favorite ? '☆' : '★';
+  window.browserAPI.showOverlay('favorites', state.favorites);
 });
 $('#menu-button').addEventListener('click', () => {
   overlays.menu = !overlays.menu;
@@ -150,3 +212,4 @@ $('#maximize').addEventListener('click', () => window.browserAPI.maximize());
 $('#close').addEventListener('click', () => window.browserAPI.close());
 window.addEventListener('keydown', (event) => { if (event.key === 'F5') { event.preventDefault(); window.browserAPI.reload(); } });
 window.browserAPI.onState(renderState);
+window.browserAPI.onFavoriteAction(handleFavoriteAction);

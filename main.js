@@ -376,6 +376,9 @@ app.whenReady().then(async () => {
     overlayData = data;
     if (overlayView && overlayKind) overlayView.webContents.send('overlay:show', overlayKind, overlayData);
   });
+  ipcMain.on('browser:favorite-action', (_event, action, data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('favorites:action', action, data);
+  });
   ipcMain.on('browser:close-overlay', () => {
     overlayKind = null;
     if (overlayView) mainWindow.removeBrowserView(overlayView);
